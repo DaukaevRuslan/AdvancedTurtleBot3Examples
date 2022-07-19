@@ -12,8 +12,7 @@ int32_t acc = ACCELERATION;
 int32_t millRequest;
 int32_t millSerial;
 
-DynamixelWorkbench dx1;
-DynamixelWorkbench dx2;
+DynamixelWorkbench dx;
 
 double* goalWheelVel;
 double* realWheelVel;
@@ -25,7 +24,7 @@ double X, Y, A;
 int count = 1;
 
 
-bool turtleMove(DynamixelWorkbench &dx, uint8_t id, float vel);
+bool turtleMove(uint8_t id, float vel);
 double getRealWheelVel(DynamixelWorkbench &dx, uint8_t id);
 void setGoalRobotVel(double *goalRobotVel, double *goalWheelVel);
 void calcOdometry(double *realWheelVel, double *realRobotVel, double *odometry);
@@ -65,20 +64,19 @@ void setup() {
   odometry[0] = 0.0;
   odometry[1] = 0.0;
   
-  dx1.init("", BOUDRATE);
-  dx2.init("", BOUDRATE);
+  dx.init("", BOUDRATE);
 
-  dx1.ping(id1);
-  dx2.ping(id2);
+  dx.ping(id1);
+  dx.ping(id2);
   
-  dx1.wheelMode(id1, acc);
-  dx2.wheelMode(id2, acc);
+  dx.wheelMode(id1, acc);
+  dx.wheelMode(id2, acc);
   
 }
 
 void loop() {
 
-  switch(count){
+  switch(count){ //Конечный автомат
     case 1:
     if (X < 0.3){
       goalRobotVel[0] = 0.1;
@@ -137,8 +135,8 @@ void loop() {
 
   setGoalRobotVel(goalRobotVel, goalWheelVel);
   
-  turtleMove(dx1, id1, goalWheelVel[0]);
-  turtleMove(dx2, id2, goalWheelVel[1]);
+  turtleMove(id1, goalWheelVel[0]);
+  turtleMove(id2, goalWheelVel[1]);
 
   if (millis() - millRequest > 100)
   {
@@ -156,21 +154,18 @@ void loop() {
     millSerial = millis();
   }
 
-  
- 
-  
 
-  dx1.ping(id1);
-  dx2.ping(id2);
+  dx.ping(id1);
+  dx.ping(id2);
   
 }
 
 
-bool turtleMove(DynamixelWorkbench &dx, uint8_t id, float vel)
+bool turtleMove(uint8_t id, float vel)
 {
   return dx.goalVelocity(id, vel);
 }
-double getRealWheelVel(DynamixelWorkbench &dx, uint8_t id)
+double getRealWheelVel(DynamixelWorkbench &dx, uint8_t id) //Считываение реальной скорости из привода.
 { 
   int32_t tempVel = 0;
   dx.itemRead(id, "Present_Velocity", &tempVel);
@@ -178,15 +173,15 @@ double getRealWheelVel(DynamixelWorkbench &dx, uint8_t id)
   double vel = tempVel * 0.0247;
   return vel;
 }
-void setGoalRobotVel(double *goalRobotVel, double *goalWheelVel)
+void setGoalRobotVel(double *goalRobotVel, double *goalWheelVel) //Функция, преобразуюзщая целевую скорость робота в целевые скорости колес
 {    
     goalWheelVel[0] = (2 * goalRobotVel[0] - 0.155 * goalRobotVel[1]) / (2 * 0.05);
     goalWheelVel[1] = (2 * goalRobotVel[0] + 0.155 * goalRobotVel[1]) / (2 * 0.05);
 }
-void calcOdometry(double *realWheelVel, double *realRobotVel, double *odometry)
+void calcOdometry(double *realWheelVel, double *realRobotVel, double *odometry) //Функция, считывающая одометрию
 {
   realRobotVel[0] = (0.05 * (realWheelVel[0] + realWheelVel[1])) / 2;
-  realRobotVel[1] = (0.05 * (realWheelVel[1] - realWheelVel[0])) / 0.155;
+  realRobotVel[1] = (0.05 * (realWheelVel[1] - realWheelVel[0])) / 0.155; //ПЗК
 
   double delta_s = ((realRobotVel[0] + realRobotVel[2]) / 2) * 0.1;
   double delta_a = ((realRobotVel[1] + realRobotVel[3]) / 2) * 0.1;
@@ -201,7 +196,7 @@ void calcOdometry(double *realWheelVel, double *realRobotVel, double *odometry)
   realRobotVel[2] = realRobotVel[0];
   realRobotVel[3] = realRobotVel[1];
 }
-void serialPrint(double *realwheelVel, double *realRobotVel, double *odometry)
+void serialPrint(double *realwheelVel, double *realRobotVel, double *odometry) //Вывод данных в сериал порт
 {
   Serial.print("Real_Velocity_Wheel_Left: ");
   Serial.print(realWheelVel[0]);
